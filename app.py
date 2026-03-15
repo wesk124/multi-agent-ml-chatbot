@@ -334,17 +334,24 @@ if "head_agent" not in st.session_state:
 with st.sidebar:
     st.header("Configuration")
 
+    # Show whether default keys are loaded from secrets
+    _has_defaults = bool(_get_secret("OPENAI_API_KEY") and _get_secret("PINECONE_API_KEY"))
+    if _has_defaults:
+        st.info("Default API keys loaded from server secrets.")
+
     openai_key = st.text_input(
         "OpenAI API Key",
-        value=_get_secret("OPENAI_API_KEY"),
+        value="",
         type="password",
-        help="Your OpenAI API key (starts with sk-...)",
+        placeholder="Using default key" if _has_defaults else "Enter your key...",
+        help="Leave blank to use the default key, or enter your own.",
     )
     pinecone_key = st.text_input(
         "Pinecone API Key",
-        value=_get_secret("PINECONE_API_KEY"),
+        value="",
         type="password",
-        help="Your Pinecone API key",
+        placeholder="Using default key" if _has_defaults else "Enter your key...",
+        help="Leave blank to use the default key, or enter your own.",
     )
     pinecone_index = st.text_input(
         "Pinecone Index Name",
@@ -356,6 +363,10 @@ with st.sidebar:
         value=_get_secret("PINECONE_NAMESPACE", "ns2500"),
         help="Namespace within the Pinecone index (e.g., ns500, ns1000, ns2500)",
     )
+
+    # Use user-provided keys if filled, otherwise fall back to secrets
+    openai_key = openai_key or _get_secret("OPENAI_API_KEY")
+    pinecone_key = pinecone_key or _get_secret("PINECONE_API_KEY")
 
     st.divider()
 
