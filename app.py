@@ -285,8 +285,50 @@ class Head_Agent:
 
 
 st.set_page_config(page_title="Multi-Agent ML Chatbot", page_icon="🤖", layout="centered")
+
+# ── Password Gate ─────────────────────────────────────────────────────────────
+APP_PASSWORD = st.secrets.get("APP_PASSWORD", "eep596")
+
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.title("🔒 Multi-Agent ML Chatbot")
+    st.markdown("Please enter the password to access the chatbot.")
+    pwd = st.text_input("Password", type="password", placeholder="Enter password...")
+    if st.button("Login", use_container_width=True):
+        if pwd == APP_PASSWORD:
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("Incorrect password. Please try again.")
+    st.stop()
+
+# ── User is authenticated beyond this point ───────────────────────────────────
 st.title("🤖 Multi-Agent ML Chatbot")
 st.caption("Powered by GPT-4.1-nano | Pinecone RAG | Multi-Agent Pipeline")
+
+# ── Helper: read API keys from Streamlit secrets or environment ───────────────
+def _get_secret(key, default=""):
+    """Try st.secrets first, then env vars, then default."""
+    try:
+        return st.secrets[key]
+    except (KeyError, FileNotFoundError):
+        return os.environ.get(key, default)
+
+# ── Auto-initialize agent from secrets on first run ──────────────────────────
+if "head_agent" not in st.session_state:
+    _ok = _get_secret("OPENAI_API_KEY")
+    _pk = _get_secret("PINECONE_API_KEY")
+    _idx = _get_secret("PINECONE_INDEX_NAME", "machine-learning-textbook")
+    _ns = _get_secret("PINECONE_NAMESPACE", "ns2500")
+    if _ok and _pk:
+        with st.spinner("Auto-initializing agent from saved secrets..."):
+            try:
+                st.session_state.head_agent = Head_Agent(_ok, _pk, _idx, _ns)
+                st.session_state.messages = []
+            except Exception as e:
+                st.error(f"Auto-init failed: {e}")
 
 # ── Sidebar: API key configuration ────────────────────────────────────────────
 with st.sidebar:
@@ -294,24 +336,24 @@ with st.sidebar:
 
     openai_key = st.text_input(
         "OpenAI API Key",
-        value=os.environ.get("OPENAI_API_KEY", ""),
+        value=_get_secret("OPENAI_API_KEY"),
         type="password",
         help="Your OpenAI API key (starts with sk-...)",
     )
     pinecone_key = st.text_input(
         "Pinecone API Key",
-        value=os.environ.get("PINECONE_API_KEY", ""),
+        value=_get_secret("PINECONE_API_KEY"),
         type="password",
         help="Your Pinecone API key",
     )
     pinecone_index = st.text_input(
         "Pinecone Index Name",
-        value=os.environ.get("PINECONE_INDEX_NAME", "machine-learning-textbook"),
+        value=_get_secret("PINECONE_INDEX_NAME", "machine-learning-textbook"),
         help="Name of your Pinecone index",
     )
     pinecone_namespace = st.text_input(
         "Pinecone Namespace",
-        value=os.environ.get("PINECONE_NAMESPACE", "ns2500"),
+        value=_get_secret("PINECONE_NAMESPACE", "ns2500"),
         help="Namespace within the Pinecone index (e.g., ns500, ns1000, ns2500)",
     )
 
